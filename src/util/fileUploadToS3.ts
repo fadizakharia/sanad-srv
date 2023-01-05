@@ -1,7 +1,10 @@
 import multerS3 from "multer-s3";
-import "dotenv/config";
+import { config } from "dotenv";
 import { S3 } from "../constants/S3Config";
 import { v4 } from "uuid";
+config({
+  path: `env/${process.env.NODE_ENV}.env`,
+});
 export const multerS3Config = () => {
   return multerS3({
     bucket: process.env.BUCKET_NAME,

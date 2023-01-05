@@ -7,6 +7,7 @@ import addShipmentSchema from "./validation/add-shipment";
 import { sanitiseObject } from "../../util/sanitisation";
 
 import { allowedStatusChange } from "../../util/Authorization";
+import { extractFilesFromKey } from "../../helpers/file.helper";
 
 export const getShipment = async (
   req: Request,
@@ -237,12 +238,9 @@ export const addShipmentHandler = async (
   try {
     const errors: Array<{ field: string; message: string }> = [];
     const error = new CustomError("something went wrong!", 500);
-    const currentUser = req.currentUser;
-    if (!currentUser) {
-      error.message = "user is not logged in!";
-      error.status = 405;
-      throw error;
-    }
+    const currentUser = req.user;
+    console.log(req.body);
+
     addShipmentSchema
       .validate({ ...sanitisedShipmentInformation }, { abortEarly: false })
       .catch(function (err: ValidationError) {
@@ -256,15 +254,47 @@ export const addShipmentHandler = async (
       error.setValidationErrors(...errors);
       throw error;
     }
-
-    const addedShipment = await shipment.create({
+    const shipmentImageLocation = (
+      extractFilesFromKey(req, "shipment_image")[0] as any
+    ).location;
+    const fromLocationSanitised = {
+      type: "Point",
+      coordinates: [
+        +sanitisedShipmentInformation["from_lat"],
+        +sanitisedShipmentInformation["from_lng"],
+      ],
+    };
+    const toLocationSanitised = {
+      type: "Point",
+      coordinates: [
+        +sanitisedShipmentInformation["to_lat"],
+        +sanitisedShipmentInformation["to_lng"],
+      ],
+    };
+    const routeLocationSanitised = {
+      type: "LineString",
+      multi_coordinates: [
+        [
+          +sanitisedShipmentInformation["from_lat"],
+          +sanitisedShipmentInformation["from_lng"],
+        ],
+        [
+          +sanitisedShipmentInformation["to_lat"],
+          +sanitisedShipmentInformation["to_lng"],
+        ],
+      ],
+    };
+    const createdShipment = new shipment({
       ...sanitisedShipmentInformation,
-      location: {
-        type: "LineString",
-        coordinates: sanitisedShipmentInformation.coordinates,
-      },
+      from_addr: sanitisedShipmentInformation["from_addr"],
+      to_addr: sanitisedShipmentInformation["to_addr"],
+      from: fromLocationSanitised,
+      route: routeLocationSanitised,
+      to: toLocationSanitised,
       host: currentUser,
+      image: shipmentImageLocation,
     });
+    const addedShipment = await createdShipment.save();
 
     res.send({ shipment: addedShipment.toObject() });
   } catch (err) {

@@ -19,13 +19,11 @@ function initializePassport(app: any) {
       name: "msh",
       resave: false,
       cookie: {
-        expires: new Date(Date.now() + 60 * 10000),
-        maxAge: 60 * 10000,
+        expires: new Date(253402300000000),
         secure: process.env.NODE_ENV === "production",
       },
-      saveUninitialized: true,
+      saveUninitialized: false,
       secret: process.env.SESSION_SECRET,
-      rolling: true,
     })
   );
   app.use(passport.initialize());

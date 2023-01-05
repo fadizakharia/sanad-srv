@@ -1,16 +1,37 @@
-import { Schema, model, SchemaTypes, Document } from "mongoose";
+import { Schema, model, SchemaTypes, Document, Model } from "mongoose";
 import { shipmentTypes, TShipment_type } from "../constants/shipment-types";
 import { statusTypes, TStatusType } from "../constants/status-types";
 import locationSchema, { ILocation } from "./location";
 import { IUser } from "./user";
 
+export interface IShipmentAttr {
+  from: ILocation;
+  to: ILocation;
+  route: ILocation;
+  from_addr: string;
+  to_addr: string;
+  delivery_date?: Date | string;
+  pickup_date: Date | string;
+  shipment_size: string;
+  cosignee_name: string;
+  phone_no: number;
+  driver: IUser;
+  shipment_type: TShipment_type;
+  status: TStatusType;
+  host: IUser | string;
+  image: string;
+  additional_info?: string;
+  date_type: "day" | "date-time";
+  shipment_image: string;
+}
 export interface IShipment extends Document {
   delivery_date: Date | string;
   pickup_date: Date | string;
   shipment_size: string;
   cosignee_name: string;
-  phone_number: number;
-  address: string;
+  from_addr: string;
+  to_addr: string;
+  phone_no: number;
   driver: IUser;
   shipment_type: TShipment_type;
   status: TStatusType;
@@ -19,19 +40,25 @@ export interface IShipment extends Document {
   additional_info: string;
   from: ILocation;
   to: ILocation;
+  route: ILocation;
   date_type: "day" | "date-time";
   shipment_image: string;
+}
+interface IShipmentModel extends Model<IShipment> {
+  build(attrs: IShipmentAttr): IShipment;
 }
 
 const shipmentSchema = new Schema<IShipment>(
   {
     from: locationSchema,
     to: locationSchema,
-    delivery_date: { type: SchemaTypes.Date, required: true },
+    route: locationSchema,
+    from_addr: { type: SchemaTypes.String },
+    to_addr: { type: SchemaTypes.String },
+    delivery_date: { type: SchemaTypes.Date, required: false },
     pickup_date: { type: SchemaTypes.Date, required: true },
     shipment_type: { type: SchemaTypes.String, enum: shipmentTypes },
-    phone_number: { type: SchemaTypes.Number, required: true },
-    address: { type: SchemaTypes.String, required: true },
+    phone_no: { type: SchemaTypes.Number, required: true },
     driver: { type: SchemaTypes.ObjectId, ref: "user" },
     host: { type: SchemaTypes.ObjectId, ref: "user" },
     status: {
@@ -55,4 +82,4 @@ shipmentSchema.virtual("expired").get(function () {
     return;
   }
 });
-export default model<IShipment>("shipment", shipmentSchema);
+export default model<IShipment, IShipmentModel>("shipment", shipmentSchema);
