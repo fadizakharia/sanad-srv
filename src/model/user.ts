@@ -18,6 +18,7 @@ export interface IUser extends Document {
   coords: ILocation;
   profile_picture?: string;
   verification?: string | IVerfication;
+  chat_token: string;
 }
 export type StrategyTypes = "";
 const usersSchema = new Schema<IUser>(
@@ -34,13 +35,14 @@ const usersSchema = new Schema<IUser>(
     profile_picture: { type: SchemaTypes.String, required: false },
     verification: { type: SchemaTypes.ObjectId, ref: "verification" },
     coords: locationSchema,
+    chat_token: { type: SchemaTypes.String },
   },
   {
     timestamps: true,
     toObject: {
       transform: function (_, ret) {
         ret.id = ret._id;
-        delete ret.password;
+
         delete ret.__v;
         delete ret.auth_strategies;
       },

@@ -1,4 +1,4 @@
-import { Request, Response, Router } from "express";
+import { NextFunction, Request, Response, Router } from "express";
 import passport from "passport";
 
 import {
@@ -7,16 +7,28 @@ import {
   handleSignup,
   passportCallbackController,
 } from "../controller/auth/auth";
+import usersModel from "../model/user";
+import { CustomError } from "../util/Error";
 
 const router = Router();
 router.post(
   "/local/login",
   passport.authenticate("local", { session: true }),
-  (req: Request, res: Response) => {
-    if (!req.user) {
-      res.status(405).send();
+  async (req: Request, res: Response, next: NextFunction) => {
+    const error = new CustomError("Something went wrong!", 500);
+    try {
+      if (!req.user) {
+        res.status(405).send();
+      }
+      const foundUser = await usersModel.findById(req.user._id);
+      if (!foundUser) {
+        throw error;
+      }
+
+      res.status(200).send({ user: foundUser });
+    } catch (err) {
+      return next(err);
     }
-    res.status(200).send({ user: req.user });
   }
 );
 router.post("/local/signup", handleSignup);

@@ -7,18 +7,26 @@ import User from "../../model/user";
 import { validationError } from "../../util/ErrorType";
 import { extractFilesFromKey } from "../../helpers/file.helper";
 import verificationDocuments from "../../model/verification-documents";
-export const currentUser = (
+export const currentUser = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
   const error = new CustomError("Something went wrong!", 500);
   try {
-    console.log(req.user);
+    if (!req.user) {
+      error.status = 405;
+      error.message = "user is not logged in";
+      throw error;
+    }
 
-    if (req.user) {
+    const foundUser = await User.findById(req.user._id);
+
+    console.log(foundUser);
+
+    if (foundUser) {
       res.send({
-        user: req.user,
+        user: foundUser.toObject(),
       });
     } else {
       error.message = "user is not signed in!";

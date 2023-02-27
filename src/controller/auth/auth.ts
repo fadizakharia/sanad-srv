@@ -4,6 +4,7 @@ import passport from "passport";
 import { CustomError } from "../../util/Error";
 import { localSignupDTO } from "./auth.dto";
 import user from "../../model/user";
+
 export const passportController = (
   req: Request,
   res: Response,
@@ -82,15 +83,28 @@ export const handleSignup = async (
   next: NextFunction
 ) => {
   const error = new CustomError("Something went wrong!", 500);
+  console.log(req.body);
 
   const userInformation = req.body as localSignupDTO;
   try {
-    const foundUser = await user.findOne();
-    if (foundUser) {
+    const foundUser = await user.findOne({
+      $or: [
+        { email: userInformation.email },
+        { phone_no: userInformation.phone_no },
+      ],
+    });
+    console.log(foundUser);
+
+    if (foundUser && foundUser.email === userInformation.email) {
       error.message = "user already exists!";
       error.status = 405;
       throw error;
+    } else if (foundUser && foundUser.phone_no === +userInformation.phone_no) {
+      error.message = "A user already exists with that phone number!";
+      error.status = 405;
+      throw error;
     }
+
     const createdUser = await user.create({ ...userInformation });
     if (createdUser) {
       res.status(200).send({ user: userInformation });

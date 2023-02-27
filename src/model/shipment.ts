@@ -15,7 +15,8 @@ export interface IShipmentAttr {
   shipment_size: string;
   cosignee_name: string;
   phone_no: number;
-  driver: IUser;
+  driver: IUser | string;
+  driver_requests: Array<IUser> | Array<string>;
   shipment_type: TShipment_type;
   status: TStatusType;
   host: IUser | string;
@@ -32,7 +33,8 @@ export interface IShipment extends Document {
   from_addr: string;
   to_addr: string;
   phone_no: number;
-  driver: IUser;
+  driver: IUser | string;
+  driver_requests: Array<IUser> | Array<string>;
   shipment_type: TShipment_type;
   status: TStatusType;
   host: IUser | string;
@@ -61,6 +63,8 @@ const shipmentSchema = new Schema<IShipment>(
     phone_no: { type: SchemaTypes.Number, required: true },
     driver: { type: SchemaTypes.ObjectId, ref: "user" },
     host: { type: SchemaTypes.ObjectId, ref: "user" },
+    cosignee_name: { type: SchemaTypes.String, required: true },
+    driver_requests: [{ type: SchemaTypes.ObjectId, ref: "user" }],
     status: {
       type: SchemaTypes.String,
       enum: statusTypes,
@@ -72,9 +76,6 @@ const shipmentSchema = new Schema<IShipment>(
   },
   { timestamps: true }
 );
-shipmentSchema.virtual("cosignee_name").get(function () {
-  return (this as any).first_name + " " + (this as any).last_name;
-});
 shipmentSchema.virtual("expired").get(function () {
   if (this.status !== "fulfilled") {
     return;

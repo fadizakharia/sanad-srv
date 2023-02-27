@@ -32,14 +32,20 @@ function initializePassport(app: any) {
     new LocalStrategy(async (username, password, done) => {
       try {
         const foundUser = await user.findOne({ email: username });
+        console.log(password);
+
         const valid = await verifyPassword(foundUser.password, password, {
           type: argon2id,
         });
         if (!valid) {
           throw new Error("Username or password is incorrect");
         }
+        console.log("here");
+
         return done(null, foundUser.toObject());
       } catch (err) {
+        console.log("error here");
+
         return done(null, false, { message: err.message });
       }
     })

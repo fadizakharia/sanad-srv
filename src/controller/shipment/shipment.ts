@@ -14,10 +14,12 @@ export const getShipment = async (
   res: Response,
   next: NextFunction
 ) => {
-  const { id } = req.query;
+  const { id } = req.params;
   const error = new CustomError("Something went wrong!", 500);
   try {
-    const foundShipment = await shipment.findById(id);
+    const foundShipment = await shipment.findById(id).populate("host");
+    console.log(foundShipment);
+
     if (!foundShipment) {
       error.message = "shipment not found";
       error.status = 404;
@@ -56,23 +58,30 @@ export const getNearbyShipments = async (
     const shipmentParams = Object.keys(sanitisedShipmentInformation);
 
     shipmentParams.forEach((param) => {
+      console.log(param);
+
       if (
         !["lat1", "lng1", "lat2", "lng2", "page", "skip", "type"].includes(
           param
         )
-      )
+      ) {
         error.message =
           "The following parameters need to be supplied: lat1, lng1, page and skip.";
-      error.status = 400;
-      errors.push({ field: param, message: `${param} is missing` });
+        error.status = 400;
+        errors.push({ field: param, message: `${param} is missing` });
+      }
     });
+    console.log(errors);
+
     if (errors.length > 0) {
       error.setValidationErrors(...errors);
       throw error;
     }
     let shipmentQuery;
+
     if (!lat2 || !lng2) {
       if (!type) {
+        console.log("here");
         shipmentQuery = shipment.find({
           location: { $geoNear: { near: [+lat1, +lng1], spherical: true } },
           status: "parked",
@@ -80,6 +89,7 @@ export const getNearbyShipments = async (
           skip: +skip,
         });
       } else {
+        console.log("here 2");
         shipmentQuery = shipment.find({
           location: { $geoNear: { near: [+lat1, +lng1], spherical: true } },
           status: "parked",
@@ -117,7 +127,10 @@ export const getNearbyShipments = async (
       }
     }
 
-    const shipmentCount = await shipmentQuery.count();
+    const foundShipments = await shipmentQuery;
+    const shipmentCount = await shipmentQuery.clone().count();
+    console.log(shipmentCount);
+
     const hasNext = (shipmentCount / +page) * +skip;
 
     if (!hasNext) {
@@ -125,10 +138,7 @@ export const getNearbyShipments = async (
       error.status = 404;
       throw error;
     }
-
-    const foundShipments = await shipmentQuery;
-
-    res.send({
+    const response = {
       shipments: foundShipments,
       meta: {
         pagination: {
@@ -137,7 +147,10 @@ export const getNearbyShipments = async (
           hasNext,
         },
       },
-    });
+    };
+    console.log(response);
+
+    res.send(response);
   } catch (err) {
     return next(err);
   }
@@ -197,20 +210,26 @@ export const getHostShipmentsHandler = async (
     if (!isExpired) {
       foundShipmentsQuery = shipment.find({
         host: currentUser.id,
-        status: { $and: [{ $ne: "fulfilled" }, { $ne: "unfulfilled" }] },
+        $and: [
+          { status: { $ne: "fulfilled" } },
+          { status: { $ne: "unfulfilled" } },
+        ],
         page,
         skip,
       });
     } else {
       foundShipmentsQuery = shipment.find({
         host: currentUser.id,
-        status: { $or: [{ $eq: "fulfilled" }, { $eq: "unfulfilled" }] },
+        $or: [
+          { status: { $eq: "fulfilled" } },
+          { status: { $eq: "unfulfilled" } },
+        ],
         page: +page,
         skip: +skip,
       });
     }
     const foundShipments = await foundShipmentsQuery;
-    const foundShipmentsCount = await foundShipmentsQuery.count();
+    const foundShipmentsCount = await foundShipmentsQuery.clone().count();
     const hasNext = (foundShipmentsCount / +page) * +skip;
     res.send({
       shipments: foundShipments,
@@ -295,7 +314,7 @@ export const addShipmentHandler = async (
       image: shipmentImageLocation,
     });
     const addedShipment = await createdShipment.save();
-
+    req.io.emit("job-taken", JSON.stringify(addedShipment));
     res.send({ shipment: addedShipment.toObject() });
   } catch (err) {
     return next(err);
