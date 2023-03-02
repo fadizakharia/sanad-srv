@@ -34,6 +34,6 @@ router.post(
 router.post("/local/signup", handleSignup);
 router.get("/:strategy/callback", passportCallbackController);
 router.get("/:strategy", passportController);
-router.post("/", logout);
+router.delete("/", logout);
 
 export { router as authRouter };
